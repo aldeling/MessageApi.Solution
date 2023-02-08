@@ -2,11 +2,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MessageApi.Models;
 
-namespace MessageApi.Controllers
+namespace MessageApi.Controllers.v2
 {
-  [Route("api/[controller]")]
   [ApiController]
-  public class BoardsController : ControllerBase
+  [Route("api/v{version:apiVersion}/[controller]")]
+  [ApiVersion("2.0")]
+  public class BoardsController: ControllerBase
   {
     private readonly MessageApiContext _db;
 
@@ -48,7 +49,7 @@ namespace MessageApi.Controllers
       return board;
     }
 
-    //POST api/Boards
+    //POST: api/Boards
     [HttpPost]
     public async Task<ActionResult<Board>> Post([FromBody] Board board)
     {
@@ -57,6 +58,53 @@ namespace MessageApi.Controllers
       return CreatedAtAction(nameof(GetBoard), new { id = board.BoardId }, board);
     }
 
-    
+    //PUT: api/Boards/#
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Put(int id, Board board)
+    {
+      if (id != board.BoardId)
+      {
+        return BadRequest();
+      }
+
+      _db.Boards.Update(board);
+
+      try
+      {
+        await _db.SaveChangesAsync();
+      }
+      catch (DbUpdateConcurrencyException)
+      {
+        if (!BoardExists(id))
+        {
+          return NotFound();
+        }
+        else
+        {
+          throw;
+        }
+      }
+      return NoContent();
+    }
+
+    private bool BoardExists(int id)
+    {
+      return _db.Boards.Any(e => e.BoardId == id);
+    }
+
+    // DELETE: api/boards/#
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+      Board board = await _db.Boards.FindAsync(id);
+      if (board == null)
+      {
+        return NotFound();
+      }
+      _db.Boards.Remove(board);
+      await _db.SaveChangesAsync();
+
+      return NoContent();
+    }
   }
 }
